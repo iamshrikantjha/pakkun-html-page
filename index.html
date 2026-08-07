@@ -1,0 +1,10 @@
+<!-- 1. The CAF Receiver SDK — this line is non-negotiable -->
+<script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+
+<script>
+  // 2. Get the singleton context
+  const context = cast.framework.CastReceiverContext.getInstance();
+
+  // 3. Start it — Cast won't consider the app "ready" without this
+  context.start();
+</script>
