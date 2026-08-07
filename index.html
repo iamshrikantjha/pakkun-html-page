@@ -92,6 +92,7 @@
     let pc = null;
     let senderId = null;
     let pendingCandidates = [];
+    let mediaStream = new MediaStream();
 
     function initPeerConnection(sender) {
       if (pc) {
@@ -100,6 +101,8 @@
 
       senderId = sender;
       pendingCandidates = [];
+      mediaStream = new MediaStream();
+      remoteVideo.srcObject = mediaStream;
 
       const config = {
         iceServers: [
@@ -125,7 +128,9 @@
         statusEl.innerText = `WebRTC State: ${pc.connectionState}`;
 
         if (pc.connectionState === 'connected') {
-          statusEl.innerText = 'Stage 4 WebRTC Handshake Connected! P2P link ready.';
+          statusEl.innerText = 'P2P WebRTC Connected! Live Stream Active.';
+          remoteVideo.style.display = 'block';
+          mainCard.style.display = 'none';
         } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
           remoteVideo.style.display = 'none';
           mainCard.style.display = 'block';
@@ -136,11 +141,14 @@
         console.log('Received Remote Track:', event.track.kind, event.streams);
         if (event.streams && event.streams[0]) {
           remoteVideo.srcObject = event.streams[0];
-          remoteVideo.style.display = 'block';
-          mainCard.style.display = 'none';
-          remoteVideo.play().catch(err => console.error('Video play error:', err));
-          statusEl.innerText = 'Stage 5 WebRTC Stream Active!';
+        } else {
+          mediaStream.addTrack(event.track);
+          remoteVideo.srcObject = mediaStream;
         }
+        remoteVideo.style.display = 'block';
+        mainCard.style.display = 'none';
+        remoteVideo.play().catch(err => console.error('Video play error:', err));
+        statusEl.innerText = `Live Track Received (${event.track.kind})`;
       };
     }
 
@@ -218,4 +226,3 @@
   </script>
 </body>
 </html>
-
