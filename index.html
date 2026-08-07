@@ -1,10 +1,103 @@
-<!-- 1. The CAF Receiver SDK — this line is non-negotiable -->
-<script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Pakkun Web Receiver</title>
+  <!-- Google Cast Application Framework (CAF) Receiver SDK -->
+  <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0F172A; /* Initial dark slate background */
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: system-ui, sans-serif;
+      transition: background-color 0.5s ease;
+    }
+    .card {
+      text-align: center;
+      padding: 40px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .logo {
+      width: 140px;
+      height: 140px;
+      background-color: #2563EB;
+      border-radius: 32px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #FFFFFF;
+      font-size: 48px;
+      font-weight: bold;
+      margin: 0 auto 24px auto;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+    h1 {
+      color: #FFFFFF;
+      font-size: 44px;
+      margin: 0 0 8px 0;
+    }
+    p {
+      color: #CBD5E1;
+      font-size: 22px;
+      margin: 0 0 16px 0;
+    }
+    .status {
+      font-size: 18px;
+      color: #38BDF8;
+      font-weight: bold;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
 
-<script>
-  // 2. Get the singleton context
-  const context = cast.framework.CastReceiverContext.getInstance();
+  <div class="card">
+    <div class="logo">P</div>
+    <h1>Pakkun Receiver</h1>
+    <p>Custom Channel Active</p>
+    <div id="statusText" class="status">Waiting for phone messages...</div>
+  </div>
 
-  // 3. Start it — Cast won't consider the app "ready" without this
-  context.start();
-</script>
+  <script>
+    const CUSTOM_NAMESPACE = 'urn:x-cast:com.pakkun.channel';
+    const context = cast.framework.CastReceiverContext.getInstance();
+    const statusEl = document.getElementById('statusText');
+
+    // Register custom message listener
+    context.addCustomMessageListener(CUSTOM_NAMESPACE, (event) => {
+      console.log('Received custom message:', event);
+      try {
+        const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        
+        if (payload.color) {
+          document.body.style.backgroundColor = payload.color;
+          statusEl.innerText = `Background changed to: ${payload.color}`;
+        } else if (payload.message) {
+          statusEl.innerText = `Received: ${payload.message}`;
+        }
+
+        // Send acknowledgement reply back to sender
+        context.sendCustomMessage(CUSTOM_NAMESPACE, event.senderId, {
+          status: 'OK',
+          receivedColor: payload.color || 'none',
+          timestamp: Date.now()
+        });
+
+      } catch (err) {
+        statusEl.innerText = `Error parsing message: ${err.message}`;
+      }
+    });
+
+    context.start();
+  </script>
+</body>
+</html>
