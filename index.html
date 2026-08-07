@@ -2,62 +2,224 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Pakkun Web Receiver</title>
+  <title>Pakkun Desktop Receiver</title>
   <!-- Google Cast Application Framework (CAF) Receiver SDK -->
   <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
   <style>
+    * { box-sizing: border-box; user-select: none; }
     body {
       margin: 0;
       padding: 0;
-      background-color: #0F172A;
+      background: radial-gradient(circle at 50% 50%, #1E293B 0%, #0F172A 100%);
+      height: 100vh;
+      width: 100vw;
+      font-family: system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+      color: #F8FAFC;
+    }
+    
+    /* Desktop Background Layer */
+    #desktopContainer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: calc(100vh - 48px);
+      overflow: hidden;
+    }
+    .desktop-shortcut {
+      width: 96px;
+      height: 100px;
+      margin: 16px;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .desktop-shortcut:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+    .shortcut-icon {
+      width: 54px;
+      height: 54px;
+      background: #2563EB;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+      margin-bottom: 8px;
+    }
+    .shortcut-label {
+      font-size: 13px;
+      color: #E2E8F0;
+      text-align: center;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    }
+
+    /* Window Manager Layer */
+    .window-frame {
+      position: absolute;
+      background: rgba(30, 41, 59, 0.85);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      font-family: system-ui, sans-serif;
       overflow: hidden;
-      transition: background-color 0.5s ease;
+      min-width: 320px;
+      min-height: 200px;
     }
-    .card {
-      text-align: center;
-      padding: 40px;
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border-radius: 24px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      z-index: 1;
-    }
-    .logo {
-      width: 140px;
-      height: 140px;
-      background-color: #2563EB;
-      border-radius: 32px;
+    .window-header {
+      height: 36px;
+      background: rgba(255, 255, 255, 0.05);
       display: flex;
-      justify-content: center;
       align-items: center;
-      color: #FFFFFF;
-      font-size: 48px;
-      font-weight: bold;
-      margin: 0 auto 24px auto;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+      justify-content: space-between;
+      padding: 0 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
-    h1 {
-      color: #FFFFFF;
-      font-size: 44px;
-      margin: 0 0 8px 0;
-    }
-    p {
+    .window-title {
+      font-size: 13px;
+      font-weight: 600;
       color: #CBD5E1;
-      font-size: 22px;
-      margin: 0 0 16px 0;
     }
-    .status {
-      font-size: 18px;
-      color: #38BDF8;
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+    .win-btn {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .btn-close { background: #EF4444; }
+    .btn-min { background: #F59E0B; }
+    .btn-max { background: #10B981; }
+    .window-body {
+      flex: 1;
+      padding: 16px;
+      overflow: auto;
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    /* Desktop Taskbar Layer */
+    #taskbar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100vw;
+      height: 48px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      z-index: 10000;
+    }
+    .start-btn {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #2563EB, #3B82F6);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-weight: bold;
+      font-size: 18px;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+      cursor: pointer;
+    }
+    .taskbar-tasks {
+      display: flex;
+      gap: 8px;
+      flex: 1;
+      margin: 0 16px;
+    }
+    .task-pill {
+      padding: 6px 14px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      font-size: 13px;
+      color: #CBD5E1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .task-pill.active {
+      background: rgba(37, 99, 235, 0.3);
+      border: 1px solid #3B82F6;
+      color: #FFF;
+    }
+    .system-tray {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+      color: #94A3B8;
       font-family: monospace;
     }
+
+    /* Start Menu Overlay */
+    #startMenu {
+      position: absolute;
+      bottom: 56px;
+      left: 12px;
+      width: 360px;
+      height: 480px;
+      background: rgba(30, 41, 59, 0.95);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.6);
+      z-index: 10001;
+      display: none;
+      flex-direction: column;
+      padding: 16px;
+    }
+    .start-search {
+      width: 100%;
+      padding: 10px 14px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: #FFF;
+      outline: none;
+      margin-bottom: 16px;
+    }
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      overflow-y: auto;
+    }
+
+    /* Virtual Mouse Pointer */
+    #virtualCursor {
+      position: fixed;
+      width: 20px;
+      height: 20px;
+      background: radial-gradient(circle, #38BDF8 0%, #2563EB 100%);
+      border: 2px solid #FFFFFF;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 99999;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      transition: transform 0.05s ease-out;
+    }
+    
     #remoteVideo {
       position: fixed;
       top: 0;
@@ -73,183 +235,177 @@
 </head>
 <body>
 
-  <div class="card" id="mainCard">
-    <div class="logo">P</div>
-    <h1>Pakkun Receiver</h1>
-    <p id="subTitle">Custom Channel Active</p>
-    <div id="statusText" class="status">Waiting for phone messages...</div>
+  <!-- Desktop Wallpaper Container -->
+  <div id="desktopContainer">
+    <div class="desktop-shortcut" onclick="openApp('Browser', '🌐', 'https://google.com')">
+      <div class="shortcut-icon">🌐</div>
+      <div class="shortcut-label">Browser</div>
+    </div>
+    <div class="desktop-shortcut" onclick="openApp('Files', '📁')">
+      <div class="shortcut-icon">📁</div>
+      <div class="shortcut-label">Files</div>
+    </div>
+    <div class="desktop-shortcut" onclick="openApp('Calculator', '🧮')">
+      <div class="shortcut-icon">🧮</div>
+      <div class="shortcut-label">Calculator</div>
+    </div>
+    <div class="desktop-shortcut" onclick="openApp('Notes', '📝')">
+      <div class="shortcut-icon">📝</div>
+      <div class="shortcut-label">Notes</div>
+    </div>
+    <div class="desktop-shortcut" onclick="openApp('Media Player', '🎬')">
+      <div class="shortcut-icon">🎬</div>
+      <div class="shortcut-label">Media Player</div>
+    </div>
   </div>
 
+  <!-- Start Menu -->
+  <div id="startMenu">
+    <input type="text" class="start-search" placeholder="Type to search apps..." readonly />
+    <div class="app-grid" id="appGrid">
+      <!-- Apps dynamically rendered here -->
+    </div>
+  </div>
+
+  <!-- Taskbar -->
+  <div id="taskbar">
+    <div class="start-btn" onclick="toggleStartMenu()">P</div>
+    <div class="taskbar-tasks" id="taskbarTasks"></div>
+    <div class="system-tray">
+      <span id="sysWifi">📶 5G</span>
+      <span id="sysBattery">🔋 100%</span>
+      <span id="sysClock">12:00 PM</span>
+    </div>
+  </div>
+
+  <!-- Virtual Mouse Pointer -->
+  <div id="virtualCursor" style="top: 50vh; left: 50vw;"></div>
+
+  <!-- Screen Share Stream Overlay -->
   <video id="remoteVideo" autoplay playsinline></video>
 
   <script>
     const CUSTOM_NAMESPACE = 'urn:x-cast:com.pakkun.channel';
     const context = cast.framework.CastReceiverContext.getInstance();
-    const statusEl = document.getElementById('statusText');
+    const virtualCursor = document.getElementById('virtualCursor');
+    const startMenu = document.getElementById('startMenu');
+    const taskbarTasks = document.getElementById('taskbarTasks');
+    const sysClock = document.getElementById('sysClock');
     const remoteVideo = document.getElementById('remoteVideo');
-    const mainCard = document.getElementById('mainCard');
 
+    let cursorX = window.innerWidth / 2;
+    let cursorY = window.innerHeight / 2;
+    let openWindows = [];
+    let windowIdCounter = 0;
     let pc = null;
     let senderId = null;
-    let pendingCandidates = [];
 
-    function initPeerConnection(sender) {
-      if (pc) {
-        try { pc.close(); } catch(e){}
-      }
+    // Clock
+    setInterval(() => {
+      const now = new Date();
+      sysClock.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }, 1000);
 
-      senderId = sender;
-      pendingCandidates = [];
-
-      try {
-        remoteVideo.pause();
-        remoteVideo.srcObject = null;
-      } catch(e){}
-      remoteVideo.style.display = 'none';
-      mainCard.style.display = 'block';
-
-      const config = {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' }
-        ]
-      };
-
-      pc = new RTCPeerConnection(config);
-
-      pc.onicecandidate = (event) => {
-        if (event.candidate && senderId) {
-          console.log('Sending TV ICE candidate:', event.candidate);
-          context.sendCustomMessage(CUSTOM_NAMESPACE, senderId, {
-            type: 'ice_candidate',
-            candidate: JSON.stringify(event.candidate)
-          });
-        }
-      };
-
-      pc.onconnectionstatechange = () => {
-        console.log('WebRTC Connection State:', pc.connectionState);
-        statusEl.innerText = `WebRTC State: ${pc.connectionState}`;
-
-        if (pc.connectionState === 'connected') {
-          statusEl.innerText = 'P2P WebRTC Connected! Live Stream Active.';
-          remoteVideo.style.display = 'block';
-          mainCard.style.display = 'none';
-        } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-          remoteVideo.style.display = 'none';
-          mainCard.style.display = 'block';
-        }
-      };
-
-      pc.ontrack = (event) => {
-        console.log('Received Remote Track:', event.track.kind, event.streams);
-        
-        let stream = remoteVideo.srcObject;
-        if (!stream || !(stream instanceof MediaStream)) {
-          stream = new MediaStream();
-          remoteVideo.srcObject = stream;
-        }
-
-        if (event.streams && event.streams[0]) {
-          event.streams[0].getTracks().forEach(t => {
-            if (!stream.getTracks().some(existing => existing.id === t.id)) {
-              stream.addTrack(t);
-            }
-          });
-        } else {
-          if (!stream.getTracks().some(existing => existing.id === event.track.id)) {
-            stream.addTrack(event.track);
-          }
-        }
-
-        remoteVideo.muted = false;
-        remoteVideo.style.display = 'block';
-        mainCard.style.display = 'none';
-        remoteVideo.play().then(() => {
-          console.log('Unmuted playback started successfully');
-        }).catch(err => {
-          console.warn('Unmuted autoplay blocked, attempting muted fallback:', err);
-          remoteVideo.muted = true;
-          remoteVideo.play().then(() => {
-            remoteVideo.muted = false;
-          });
-        });
-
-        statusEl.innerText = `Live Stream Active (${stream.getTracks().length} tracks)`;
-      };
+    function toggleStartMenu() {
+      startMenu.style.display = (startMenu.style.display === 'flex') ? 'none' : 'flex';
     }
 
-    // Register custom message listener for Cast signaling
-    context.addCustomMessageListener(CUSTOM_NAMESPACE, async (event) => {
-      console.log('Received Cast message:', event);
-      senderId = event.senderId;
+    function openApp(name, icon, url) {
+      startMenu.style.display = 'none';
+      windowIdCounter++;
+      const winId = `win_${windowIdCounter}`;
 
+      const winEl = document.createElement('div');
+      winEl.className = 'window-frame';
+      winEl.id = winId;
+      winEl.style.width = '640px';
+      winEl.style.height = '420px';
+      winEl.style.left = `${100 + (windowIdCounter * 20)}px`;
+      winEl.style.top = `${80 + (windowIdCounter * 20)}px`;
+      winEl.style.zIndex = 100 + windowIdCounter;
+
+      let contentHtml = `<div style="color: #CBD5E1;">Welcome to ${name}</div>`;
+      if (name === 'Calculator') {
+        contentHtml = `
+          <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px;">
+            <input id="calcInput" style="grid-column: span 4; height:40px; font-size:20px; text-align:right; padding:8px;" readonly value="0" />
+            <button onclick="calc('7')">7</button><button onclick="calc('8')">8</button><button onclick="calc('9')">9</button><button onclick="calc('/')">/</button>
+            <button onclick="calc('4')">4</button><button onclick="calc('5')">5</button><button onclick="calc('6')">6</button><button onclick="calc('*')">*</button>
+            <button onclick="calc('1')">1</button><button onclick="calc('2')">2</button><button onclick="calc('3')">3</button><button onclick="calc('-')">-</button>
+            <button onclick="calc('0')">0</button><button onclick="calc('C')">C</button><button onclick="calc('=')">=</button><button onclick="calc('+')">+</button>
+          </div>`;
+      } else if (name === 'Notes') {
+        contentHtml = `<textarea style="width:100%; height:100%; background:transparent; color:#FFF; border:none; outline:none; font-size:16px;" placeholder="Start typing notes..."></textarea>`;
+      }
+
+      winEl.innerHTML = `
+        <div class="window-header">
+          <div class="window-title">${icon} ${name}</div>
+          <div class="window-controls">
+            <div class="win-btn btn-min" onclick="minimizeWindow('${winId}')"></div>
+            <div class="win-btn btn-max" onclick="maximizeWindow('${winId}')"></div>
+            <div class="win-btn btn-close" onclick="closeWindow('${winId}')"></div>
+          </div>
+        </div>
+        <div class="window-body">${contentHtml}</div>
+      `;
+
+      document.body.appendChild(winEl);
+
+      // Add to taskbar
+      const pill = document.createElement('div');
+      pill.className = 'task-pill active';
+      pill.id = `pill_${winId}`;
+      pill.innerHTML = `<span>${icon}</span> <span>${name}</span>`;
+      taskbarTasks.appendChild(pill);
+
+      openWindows.push({ id: winId, name, icon });
+    }
+
+    function closeWindow(winId) {
+      const win = document.getElementById(winId);
+      if (win) win.remove();
+      const pill = document.getElementById(`pill_${winId}`);
+      if (pill) pill.remove();
+      openWindows = openWindows.filter(w => w.id !== winId);
+    }
+
+    function calc(val) {
+      const input = document.getElementById('calcInput');
+      if (!input) return;
+      if (val === 'C') input.value = '0';
+      else if (val === '=') {
+        try { input.value = eval(input.value); } catch(e) { input.value = 'Error'; }
+      } else {
+        if (input.value === '0') input.value = val;
+        else input.value += val;
+      }
+    }
+
+    // Handle Trackpad Remote Messages from Phone
+    context.addCustomMessageListener(CUSTOM_NAMESPACE, async (event) => {
       try {
         const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
 
-        if (payload.color) {
-          document.body.style.backgroundColor = payload.color;
-          statusEl.innerText = `Background: ${payload.color}`;
-          remoteVideo.style.display = 'none';
-          mainCard.style.display = 'block';
-        } 
+        if (payload.type === 'cursor_move') {
+          cursorX = Math.max(0, Math.min(window.innerWidth, cursorX + payload.dx * 1.5));
+          cursorY = Math.max(0, Math.min(window.innerHeight, cursorY + payload.dy * 1.5));
+          virtualCursor.style.left = `${cursorX}px`;
+          virtualCursor.style.top = `${cursorY}px`;
+        }
+        else if (payload.type === 'click') {
+          const el = document.elementFromPoint(cursorX, cursorY);
+          if (el) el.click();
+        }
+        else if (payload.type === 'launch_app') {
+          openApp(payload.name, payload.icon || '📱');
+        }
         else if (payload.type === 'offer') {
-          console.log('Processing SDP Offer...');
-          statusEl.innerText = 'Received SDP Offer, creating Answer...';
-          initPeerConnection(event.senderId);
-
-          const offer = new RTCSessionDescription({
-            type: 'offer',
-            sdp: payload.sdp
-          });
-
-          await pc.setRemoteDescription(offer);
-
-          // Flush any buffered ICE candidates received before SDP offer
-          for (const cand of pendingCandidates) {
-            await pc.addIceCandidate(cand);
-          }
-          pendingCandidates = [];
-
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-
-          console.log('Sending SDP Answer back to sender...');
-          context.sendCustomMessage(CUSTOM_NAMESPACE, event.senderId, {
-            type: 'answer',
-            sdp: answer.sdp
-          });
-          statusEl.innerText = 'SDP Answer Sent! Establishing P2P link...';
-        } 
-        else if (payload.type === 'ice_candidate') {
-          const candidateData = typeof payload.candidate === 'string' 
-            ? JSON.parse(payload.candidate) 
-            : payload.candidate;
-          const candidate = new RTCIceCandidate(candidateData);
-
-          if (pc && pc.remoteDescription && pc.remoteDescription.type) {
-            await pc.addIceCandidate(candidate);
-          } else {
-            pendingCandidates.push(candidate);
-          }
+          // Fallback to video screen mirror if requested
+          remoteVideo.style.display = 'block';
         }
-        else if (payload.type === 'stop') {
-          if (pc) {
-            pc.close();
-            pc = null;
-          }
-          try {
-            remoteVideo.pause();
-            remoteVideo.srcObject = null;
-          } catch(e){}
-          remoteVideo.style.display = 'none';
-          mainCard.style.display = 'block';
-          statusEl.innerText = 'Stream stopped';
-        }
-
       } catch (err) {
-        console.error('Error handling message:', err);
-        statusEl.innerText = `Error: ${err.message}`;
+        console.error('Error handling trackpad message:', err);
       }
     });
 
