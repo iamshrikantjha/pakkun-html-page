@@ -75,7 +75,7 @@
 
   <div class="card" id="mainCard">
     <div class="logo">P</div>
-    <h1>Pakkun Receiver: Stage 8 — Add audio</h1>
+    <h1>Pakkun Receiver</h1>
     <p id="subTitle">Custom Channel Active</p>
     <div id="statusText" class="status">Waiting for phone messages...</div>
   </div>
@@ -165,7 +165,16 @@
         remoteVideo.muted = false;
         remoteVideo.style.display = 'block';
         mainCard.style.display = 'none';
-        remoteVideo.play().catch(err => console.error('Video play error:', err));
+        remoteVideo.play().then(() => {
+          console.log('Unmuted playback started successfully');
+        }).catch(err => {
+          console.warn('Unmuted autoplay blocked, attempting muted fallback:', err);
+          remoteVideo.muted = true;
+          remoteVideo.play().then(() => {
+            remoteVideo.muted = false;
+          });
+        });
+
         statusEl.innerText = `Live Stream Active (${stream.getTracks().length} tracks)`;
       };
     }
