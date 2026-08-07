@@ -95,11 +95,18 @@
 
     function initPeerConnection(sender) {
       if (pc) {
-        pc.close();
+        try { pc.close(); } catch(e){}
       }
 
       senderId = sender;
       pendingCandidates = [];
+
+      try {
+        remoteVideo.pause();
+        remoteVideo.srcObject = null;
+      } catch(e){}
+      remoteVideo.style.display = 'none';
+      mainCard.style.display = 'block';
 
       const config = {
         iceServers: [
@@ -126,6 +133,8 @@
 
         if (pc.connectionState === 'connected') {
           statusEl.innerText = 'P2P WebRTC Connected! Live Stream Active.';
+          remoteVideo.style.display = 'block';
+          mainCard.style.display = 'none';
         } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
           remoteVideo.style.display = 'none';
           mainCard.style.display = 'block';
@@ -135,9 +144,8 @@
       pc.ontrack = (event) => {
         console.log('Received Remote Track:', event.track.kind, event.streams);
         
-        // Ensure video track specifically sets remoteVideo source
         if (event.track.kind === 'video') {
-          let stream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
+          const stream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
           remoteVideo.srcObject = stream;
           remoteVideo.style.display = 'block';
           mainCard.style.display = 'none';
@@ -206,6 +214,10 @@
             pc.close();
             pc = null;
           }
+          try {
+            remoteVideo.pause();
+            remoteVideo.srcObject = null;
+          } catch(e){}
           remoteVideo.style.display = 'none';
           mainCard.style.display = 'block';
           statusEl.innerText = 'Stream stopped';
