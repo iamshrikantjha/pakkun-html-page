@@ -80,7 +80,7 @@
     <div id="statusText" class="status">Waiting for phone messages...</div>
   </div>
 
-  <video id="remoteVideo" autoplay playsinline muted></video>
+  <video id="remoteVideo" autoplay playsinline></video>
 
   <script>
     const CUSTOM_NAMESPACE = 'urn:x-cast:com.pakkun.channel';
@@ -144,14 +144,29 @@
       pc.ontrack = (event) => {
         console.log('Received Remote Track:', event.track.kind, event.streams);
         
-        if (event.track.kind === 'video') {
-          const stream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
+        let stream = remoteVideo.srcObject;
+        if (!stream || !(stream instanceof MediaStream)) {
+          stream = new MediaStream();
           remoteVideo.srcObject = stream;
-          remoteVideo.style.display = 'block';
-          mainCard.style.display = 'none';
-          remoteVideo.play().catch(err => console.error('Video play error:', err));
-          statusEl.innerText = 'Live Screen Sharing Active!';
         }
+
+        if (event.streams && event.streams[0]) {
+          event.streams[0].getTracks().forEach(t => {
+            if (!stream.getTracks().some(existing => existing.id === t.id)) {
+              stream.addTrack(t);
+            }
+          });
+        } else {
+          if (!stream.getTracks().some(existing => existing.id === event.track.id)) {
+            stream.addTrack(event.track);
+          }
+        }
+
+        remoteVideo.muted = false;
+        remoteVideo.style.display = 'block';
+        mainCard.style.display = 'none';
+        remoteVideo.play().catch(err => console.error('Video play error:', err));
+        statusEl.innerText = `Live Stream Active (${stream.getTracks().length} tracks)`;
       };
     }
 
