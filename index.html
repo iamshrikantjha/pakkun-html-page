@@ -9,13 +9,14 @@
     body {
       margin: 0;
       padding: 0;
-      background-color: #0F172A; /* Initial dark slate background */
+      background-color: #0F172A;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
       font-family: system-ui, sans-serif;
+      overflow: hidden;
       transition: background-color 0.5s ease;
     }
     .card {
@@ -25,6 +26,7 @@
       backdrop-filter: blur(10px);
       border-radius: 24px;
       border: 1px solid rgba(255, 255, 255, 0.2);
+      z-index: 1;
     }
     .logo {
       width: 140px;
@@ -56,44 +58,158 @@
       font-weight: bold;
       font-family: monospace;
     }
+    #remoteVideo {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: contain;
+      background-color: #000;
+      z-index: 100;
+      display: none;
+    }
   </style>
 </head>
 <body>
 
-  <div class="card">
+  <div class="card" id="mainCard">
     <div class="logo">P</div>
     <h1>Pakkun Receiver</h1>
-    <p>Custom Channel Active</p>
+    <p id="subTitle">Custom Channel Active</p>
     <div id="statusText" class="status">Waiting for phone messages...</div>
   </div>
+
+  <video id="remoteVideo" autoplay playsinline muted></video>
 
   <script>
     const CUSTOM_NAMESPACE = 'urn:x-cast:com.pakkun.channel';
     const context = cast.framework.CastReceiverContext.getInstance();
     const statusEl = document.getElementById('statusText');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const mainCard = document.getElementById('mainCard');
 
-    // Register custom message listener
-    context.addCustomMessageListener(CUSTOM_NAMESPACE, (event) => {
-      console.log('Received custom message:', event);
+    let pc = null;
+    let senderId = null;
+    let pendingCandidates = [];
+
+    function initPeerConnection(sender) {
+      if (pc) {
+        pc.close();
+      }
+
+      senderId = sender;
+      pendingCandidates = [];
+
+      const config = {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' }
+        ]
+      };
+
+      pc = new RTCPeerConnection(config);
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate && senderId) {
+          console.log('Sending TV ICE candidate:', event.candidate);
+          context.sendCustomMessage(CUSTOM_NAMESPACE, senderId, {
+            type: 'ice_candidate',
+            candidate: JSON.stringify(event.candidate)
+          });
+        }
+      };
+
+      pc.onconnectionstatechange = () => {
+        console.log('WebRTC Connection State:', pc.connectionState);
+        statusEl.innerText = `WebRTC State: ${pc.connectionState}`;
+
+        if (pc.connectionState === 'connected') {
+          statusEl.innerText = 'WebRTC PeerConnection Connected!';
+        } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+          remoteVideo.style.display = 'none';
+          mainCard.style.display = 'block';
+        }
+      };
+
+      pc.ontrack = (event) => {
+        console.log('Received Remote Track:', event.track.kind, event.streams);
+        if (event.streams && event.streams[0]) {
+          remoteVideo.srcObject = event.streams[0];
+          remoteVideo.style.display = 'block';
+          remoteVideo.play().catch(err => console.error('Video play error:', err));
+          statusEl.innerText = 'Streaming Media Active!';
+        }
+      };
+    }
+
+    // Register custom message listener for Cast signaling
+    context.addCustomMessageListener(CUSTOM_NAMESPACE, async (event) => {
+      console.log('Received Cast message:', event);
+      senderId = event.senderId;
+
       try {
         const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        
+
         if (payload.color) {
           document.body.style.backgroundColor = payload.color;
-          statusEl.innerText = `Background changed to: ${payload.color}`;
-        } else if (payload.message) {
-          statusEl.innerText = `Received: ${payload.message}`;
+          statusEl.innerText = `Background: ${payload.color}`;
+          remoteVideo.style.display = 'none';
+          mainCard.style.display = 'block';
+        } 
+        else if (payload.type === 'offer') {
+          console.log('Processing SDP Offer...');
+          statusEl.innerText = 'Received SDP Offer, creating Answer...';
+          initPeerConnection(event.senderId);
+
+          const offer = new RTCSessionDescription({
+            type: 'offer',
+            sdp: payload.sdp
+          });
+
+          await pc.setRemoteDescription(offer);
+
+          // Flush any buffered ICE candidates received before SDP offer
+          for (const cand of pendingCandidates) {
+            await pc.addIceCandidate(cand);
+          }
+          pendingCandidates = [];
+
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+
+          console.log('Sending SDP Answer back to sender...');
+          context.sendCustomMessage(CUSTOM_NAMESPACE, event.senderId, {
+            type: 'answer',
+            sdp: answer.sdp
+          });
+          statusEl.innerText = 'SDP Answer Sent! Establishing P2P link...';
+        } 
+        else if (payload.type === 'ice_candidate') {
+          const candidateData = typeof payload.candidate === 'string' 
+            ? JSON.parse(payload.candidate) 
+            : payload.candidate;
+          const candidate = new RTCIceCandidate(candidateData);
+
+          if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+            await pc.addIceCandidate(candidate);
+          } else {
+            pendingCandidates.push(candidate);
+          }
+        }
+        else if (payload.type === 'stop') {
+          if (pc) {
+            pc.close();
+            pc = null;
+          }
+          remoteVideo.style.display = 'none';
+          mainCard.style.display = 'block';
+          statusEl.innerText = 'Stream stopped';
         }
 
-        // Send acknowledgement reply back to sender
-        context.sendCustomMessage(CUSTOM_NAMESPACE, event.senderId, {
-          status: 'OK',
-          receivedColor: payload.color || 'none',
-          timestamp: Date.now()
-        });
-
       } catch (err) {
-        statusEl.innerText = `Error parsing message: ${err.message}`;
+        console.error('Error handling message:', err);
+        statusEl.innerText = `Error: ${err.message}`;
       }
     });
 
@@ -101,3 +217,4 @@
   </script>
 </body>
 </html>
+
