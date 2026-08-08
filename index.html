@@ -80,6 +80,19 @@
       border-bottom: 16px solid transparent;
       filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
     }
+    #tvCursor.clicking::after {
+      content: '';
+      position: absolute;
+      top: -8px; left: -8px;
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      border: 2px solid rgba(56, 189, 248, 0.6);
+      animation: clickRipple 0.3s ease-out forwards;
+    }
+    @keyframes clickRipple {
+      0% { transform: scale(0.3); opacity: 1; }
+      100% { transform: scale(1.5); opacity: 0; }
+    }
 
     /* Debug info (bottom-right, semi-transparent) */
     #debugInfo {
@@ -193,12 +206,27 @@
         console.log('[Receiver] ICE state:', pc.iceConnectionState);
         setDebug('ICE: ' + pc.iceConnectionState);
 
-        if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+        if (pc.iceConnectionState === 'disconnected') {
+          // Feature J: Attempt reconnection after brief disconnect
+          setDebug('Reconnecting...');
+          setTimeout(() => {
+            if (pc && pc.iceConnectionState === 'disconnected') {
+              console.log('[Receiver] ICE still disconnected, requesting re-offer');
+              if (lastSenderId) {
+                context.sendCustomMessage(CUSTOM_NAMESPACE, lastSenderId, {
+                  type: 'reconnect_request'
+                });
+              }
+            }
+          }, 3000);
+        }
+
+        if (pc.iceConnectionState === 'failed') {
           streamActive = false;
           tvCursor.style.display = 'none';
-          // Show waiting screen again
           waitingScreen.style.display = 'flex';
           waitingScreen.style.opacity = '1';
+          setDebug('Connection lost');
         }
       };
 
@@ -310,11 +338,34 @@
           case 'click':
             // Phone trackpad sends a click at current cursor position
             if (streamActive && lastSenderId) {
+              // Visual feedback: ripple on cursor
+              tvCursor.classList.add('clicking');
+              setTimeout(() => tvCursor.classList.remove('clicking'), 300);
+
               const rect = remoteVideo.getBoundingClientRect();
               const xPercent = (cursorX - rect.left) / rect.width;
               const yPercent = (cursorY - rect.top) / rect.height;
               sendTapToPhone(xPercent, yPercent, lastSenderId);
             }
+            break;
+
+          case 'swipe':
+            // Phone sends swipe events — forward to phone as normalized coordinates
+            if (streamActive && lastSenderId) {
+              context.sendCustomMessage(CUSTOM_NAMESPACE, lastSenderId, {
+                type: 'remote_swipe',
+                startXPercent: payload.startXPercent,
+                startYPercent: payload.startYPercent,
+                endXPercent: payload.endXPercent,
+                endYPercent: payload.endYPercent,
+                durationMs: payload.durationMs || 300
+              });
+            }
+            break;
+
+          case 'nav_action':
+            // Navigation actions are handled by the phone, no TV action needed
+            console.log('[Receiver] Nav action:', payload.action);
             break;
 
           default:
