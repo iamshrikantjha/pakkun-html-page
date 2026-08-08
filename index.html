@@ -2,252 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Pakkun Mobile Desktop Shell</title>
-  <!-- Google Cast Application Framework (CAF) Receiver SDK -->
+  <title>Pakkun Receiver</title>
   <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
   <style>
-    * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: radial-gradient(circle at 50% 30%, #1E293B 0%, #0F172A 100%);
+      background: #000;
+      width: 100vw;
       height: 100vh;
-      width: 100vw;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       overflow: hidden;
-      color: #F8FAFC;
-    }
-    
-    /* Desktop Background Canvas Grid */
-    #desktopArea {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: calc(100vh - 52px);
-      overflow-y: auto;
-      padding: 24px;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-      grid-auto-rows: 120px;
-      gap: 16px;
-      align-content: start;
-    }
-    .desktop-app {
-      width: 104px;
-      height: 112px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      border-radius: 16px;
-      cursor: pointer;
-      padding: 6px;
-      transition: background 0.2s, transform 0.1s;
-    }
-    .desktop-app:hover {
-      background: rgba(255, 255, 255, 0.15);
-      transform: translateY(-2px);
-    }
-    .app-icon {
-      width: 58px;
-      height: 58px;
-      background: linear-gradient(135deg, #2563EB, #0284C7);
-      border-radius: 18px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      color: #FFF;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.35);
-      margin-bottom: 8px;
-    }
-    .app-label {
-      font-size: 12px;
-      font-weight: 500;
-      color: #F1F5F9;
-      text-align: center;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 90px;
+      font-family: system-ui, sans-serif;
     }
 
-    /* Multi-Window Window Manager */
-    .window-frame {
-      position: absolute;
-      background: rgba(30, 41, 59, 0.92);
-      backdrop-filter: blur(28px);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 16px;
-      box-shadow: 0 24px 48px rgba(0,0,0,0.6);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      min-width: 380px;
-      min-height: 260px;
-    }
-    .window-frame.active-win {
-      border-color: #38BDF8;
-      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4), 0 32px 64px rgba(0,0,0,0.75);
-    }
-    .window-header {
-      height: 42px;
-      background: rgba(255, 255, 255, 0.08);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 14px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-      cursor: move;
-    }
-    .window-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: #F1F5F9;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .window-actions {
-      display: flex;
-      gap: 8px;
-    }
-    .win-action-btn {
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: bold;
-    }
-    .btn-close { background: #EF4444; color: #FFF; }
-    .btn-min { background: #F59E0B; color: #FFF; }
-    .btn-max { background: #10B981; color: #FFF; }
-    
-    .window-content {
-      flex: 1;
-      padding: 16px;
-      overflow: auto;
-      background: rgba(15, 23, 42, 0.75);
-    }
-
-    /* Taskbar & Navigation Dock */
-    #taskbar {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100vw;
-      height: 52px;
-      background: rgba(15, 23, 42, 0.92);
-      backdrop-filter: blur(20px);
-      border-top: 1px solid rgba(255, 255, 255, 0.12);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 14px;
-      z-index: 10000;
-    }
-    .start-trigger {
-      width: 40px;
-      height: 40px;
-      background: linear-gradient(135deg, #2563EB, #0284C7);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 20px;
-      color: #FFF;
-      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5);
-      cursor: pointer;
-    }
-    .taskbar-items {
-      display: flex;
-      gap: 10px;
-      flex: 1;
-      margin: 0 20px;
-      overflow-x: auto;
-    }
-    .task-item {
-      padding: 8px 16px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      font-size: 13px;
-      color: #CBD5E1;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-    }
-    .task-item.active {
-      background: rgba(56, 189, 248, 0.25);
-      border-color: #38BDF8;
-      color: #FFF;
-      font-weight: 600;
-    }
-    .sys-dock {
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      font-size: 13px;
-      color: #94A3B8;
-      font-family: monospace;
-    }
-
-    /* Start Menu Drawer Overlay */
-    #startMenuDrawer {
-      position: absolute;
-      bottom: 60px;
-      left: 14px;
-      width: 460px;
-      height: 540px;
-      background: rgba(30, 41, 59, 0.96);
-      backdrop-filter: blur(28px);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 20px;
-      box-shadow: 0 32px 64px rgba(0,0,0,0.75);
-      z-index: 10001;
-      display: none;
-      flex-direction: column;
-      padding: 20px;
-    }
-    .start-search-box {
-      width: 100%;
-      padding: 12px 16px;
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 12px;
-      color: #FFF;
-      font-size: 15px;
-      outline: none;
-      margin-bottom: 20px;
-    }
-    .start-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      overflow-y: auto;
-      flex: 1;
-    }
-
-    /* Virtual Mouse Pointer Overlay */
-    #virtualCursor {
-      position: fixed;
-      width: 22px;
-      height: 22px;
-      background: radial-gradient(circle, #38BDF8 0%, #2563EB 100%);
-      border: 2px solid #FFFFFF;
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 999999;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.6);
-      transition: transform 0.05s linear;
-    }
-    
+    /* Fullscreen video sink — the ONLY visual layer */
     #remoteVideo {
       position: fixed;
       top: 0;
@@ -255,142 +22,162 @@
       width: 100vw;
       height: 100vh;
       object-fit: contain;
-      background-color: #000;
-      z-index: 99990;
+      background: #000;
+      z-index: 1;
+    }
+
+    /* Waiting state shown before WebRTC stream arrives */
+    #waitingScreen {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at 50% 40%, #1E293B, #0F172A);
+      color: #94A3B8;
+      font-size: 20px;
+      gap: 16px;
+      transition: opacity 0.5s ease;
+    }
+    #waitingScreen .logo {
+      font-size: 64px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #38BDF8, #818CF8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    #waitingScreen .pulse {
+      width: 12px; height: 12px;
+      background: #38BDF8;
+      border-radius: 50%;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+
+    /* TV-side cursor overlay — rendered on top of video */
+    #tvCursor {
+      position: fixed;
+      width: 24px;
+      height: 24px;
+      z-index: 100;
+      pointer-events: none;
+      transition: left 0.03s linear, top 0.03s linear;
       display: none;
+    }
+    #tvCursor::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 0; height: 0;
+      border-left: 10px solid #FFFFFF;
+      border-right: 10px solid transparent;
+      border-bottom: 16px solid transparent;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+    }
+
+    /* Debug info (bottom-right, semi-transparent) */
+    #debugInfo {
+      position: fixed;
+      bottom: 8px; right: 12px;
+      z-index: 50;
+      color: rgba(255,255,255,0.35);
+      font-size: 11px;
+      font-family: monospace;
     }
   </style>
 </head>
 <body>
 
-  <!-- Desktop Wallpaper & App Shortcuts Area -->
-  <div id="desktopArea">
-    <div class="desktop-app" data-app-name="Browser" data-app-icon="🌐">
-      <div class="app-icon">🌐</div>
-      <div class="app-label">Browser</div>
-    </div>
-    <div class="desktop-app" data-app-name="Files" data-app-icon="📁">
-      <div class="app-icon" style="background: linear-gradient(135deg, #10B981, #059669);">📁</div>
-      <div class="app-label">Files</div>
-    </div>
-    <div class="desktop-app" data-app-name="Calculator" data-app-icon="🧮">
-      <div class="app-icon" style="background: linear-gradient(135deg, #F59E0B, #D97706);">🧮</div>
-      <div class="app-label">Calculator</div>
-    </div>
-    <div class="desktop-app" data-app-name="Notes" data-app-icon="📝">
-      <div class="app-icon" style="background: linear-gradient(135deg, #8B5CF6, #7C3AED);">📝</div>
-      <div class="app-label">Notes</div>
-    </div>
-    <div class="desktop-app" data-app-name="Settings" data-app-icon="⚙️">
-      <div class="app-icon" style="background: linear-gradient(135deg, #64748B, #475569);">⚙️</div>
-      <div class="app-label">Settings</div>
-    </div>
+  <!-- Waiting screen shown until WebRTC stream arrives -->
+  <div id="waitingScreen">
+    <div class="logo">Pakkun</div>
+    <div>Waiting for phone to connect...</div>
+    <div class="pulse"></div>
   </div>
 
-  <!-- Start Menu Drawer -->
-  <div id="startMenuDrawer">
-    <input type="text" id="startSearchInput" class="start-search-box" placeholder="Search installed apps..." onkeyup="filterApps()" />
-    <div class="start-grid" id="startGrid">
-      <div class="desktop-app" data-app-name="Browser" data-app-icon="🌐"><div class="app-icon">🌐</div><div class="app-label">Browser</div></div>
-      <div class="desktop-app" data-app-name="Files" data-app-icon="📁"><div class="app-icon" style="background: linear-gradient(135deg, #10B981, #059669);">📁</div><div class="app-label">Files</div></div>
-      <div class="desktop-app" data-app-name="Calculator" data-app-icon="🧮"><div class="app-icon" style="background: linear-gradient(135deg, #F59E0B, #D97706);">🧮</div><div class="app-label">Calculator</div></div>
-      <div class="desktop-app" data-app-name="Notes" data-app-icon="📝"><div class="app-icon" style="background: linear-gradient(135deg, #8B5CF6, #7C3AED);">📝</div><div class="app-label">Notes</div></div>
-      <div class="desktop-app" data-app-name="Settings" data-app-icon="⚙️"><div class="app-icon" style="background: linear-gradient(135deg, #64748B, #475569);">⚙️</div><div class="app-label">Settings</div></div>
-    </div>
-  </div>
+  <!-- Fullscreen video sink for WebRTC stream from phone -->
+  <video id="remoteVideo" autoplay playsinline muted></video>
 
-  <!-- Taskbar -->
-  <div id="taskbar">
-    <div class="start-trigger" id="startTrigger">P</div>
-    <div class="taskbar-items" id="taskbarItems"></div>
-    <div class="sys-dock">
-      <span>📶 5G</span>
-      <span>🔋 100%</span>
-      <span id="sysClock">12:00 PM</span>
-    </div>
-  </div>
+  <!-- TV-side cursor overlay -->
+  <div id="tvCursor"></div>
 
-  <!-- Virtual Mouse Pointer Overlay -->
-  <div id="virtualCursor" style="top: 50vh; left: 50vw;"></div>
-
-  <!-- Real-Time Native Stream Overlay -->
-  <video id="remoteVideo" autoplay playsinline></video>
+  <!-- Debug info -->
+  <div id="debugInfo">Pakkun Receiver v2.0 | Idle</div>
 
   <script>
+    // ═══════════════════════════════════════════════════════════════
+    //  Pakkun Cast Receiver — Dumb Video Sink
+    //  Per VIRTUAL_DESKTOP.md Section 2:
+    //    "The receiver has no desktop-rendering logic of its own —
+    //     it is a dumb video sink plus a thin input-forwarding layer."
+    // ═══════════════════════════════════════════════════════════════
+
     const CUSTOM_NAMESPACE = 'urn:x-cast:com.pakkun.channel';
     const context = cast.framework.CastReceiverContext.getInstance();
-    const virtualCursor = document.getElementById('virtualCursor');
-    const startMenuDrawer = document.getElementById('startMenuDrawer');
-    const startSearchInput = document.getElementById('startSearchInput');
-    const startGrid = document.getElementById('startGrid');
-    const desktopArea = document.getElementById('desktopArea');
-    const taskbarItems = document.getElementById('taskbarItems');
-    const sysClock = document.getElementById('sysClock');
+
     const remoteVideo = document.getElementById('remoteVideo');
+    const waitingScreen = document.getElementById('waitingScreen');
+    const tvCursor = document.getElementById('tvCursor');
+    const debugInfo = document.getElementById('debugInfo');
 
-    let cursorX = window.innerWidth / 2;
-    let cursorY = window.innerHeight / 2;
-    let windowIdCounter = 0;
     let pc = null;
+    let cursorX = 0;
+    let cursorY = 0;
+    let streamActive = false;
 
-    // Live Clock
-    setInterval(() => {
-      const now = new Date();
-      sysClock.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }, 1000);
-
-    function toggleStartMenu() {
-      const isOpen = startMenuDrawer.style.display === 'flex';
-      startMenuDrawer.style.display = isOpen ? 'none' : 'flex';
-      if (!isOpen) startSearchInput.focus();
+    function setDebug(msg) {
+      debugInfo.textContent = `Pakkun Receiver v2.0 | ${msg}`;
     }
 
-    function filterApps() {
-      const query = startSearchInput.value.toLowerCase();
-      const apps = startGrid.getElementsByClassName('desktop-app');
-      for (let app of apps) {
-        const label = app.innerText.toLowerCase();
-        app.style.display = label.includes(query) ? 'flex' : 'none';
-      }
-    }
-
-    function renderInstalledApps(apps) {
-      if (!apps || !apps.length) return;
-      console.log('Rendering', apps.length, 'installed phone apps in desktop shell');
-
-      startGrid.innerHTML = '';
-      apps.forEach(app => {
-        const appEl = document.createElement('div');
-        appEl.className = 'desktop-app';
-        appEl.setAttribute('data-app-name', app.name);
-        appEl.setAttribute('data-app-pkg', app.packageName);
-        appEl.setAttribute('data-app-icon', '📱');
-
-        let hash = 0;
-        for (let i = 0; i < app.name.length; i++) hash = app.name.charCodeAt(i) + ((hash << 5) - hash);
-        const hue = Math.abs(hash) % 360;
-
-        appEl.innerHTML = `
-          <div class="app-icon" style="background: linear-gradient(135deg, hsl(${hue}, 70%, 50%), hsl(${(hue+40)%360}, 80%, 40%));">📱</div>
-          <div class="app-label">${app.name}</div>
-        `;
-        startGrid.appendChild(appEl);
-      });
-    }
-
+    // ─── WebRTC Offer Handler ───────────────────────────────────
     async function handleOffer(offerSdp, senderId) {
-      console.log('Received WebRTC offer from phone');
+      console.log('[Receiver] Received WebRTC offer from phone');
+      setDebug('Connecting...');
+
+      // Clean up any existing connection
+      if (pc) {
+        try { pc.close(); } catch (e) {}
+        pc = null;
+      }
+
       pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' }
+        ]
       });
 
       pc.ontrack = (event) => {
-        console.log('Received video/audio track on TV receiver');
+        console.log('[Receiver] Received track:', event.track.kind);
         remoteVideo.srcObject = event.streams[0];
-        remoteVideo.style.display = 'block';
+
+        // Hide waiting screen, show video
+        waitingScreen.style.opacity = '0';
+        setTimeout(() => { waitingScreen.style.display = 'none'; }, 500);
+
+        // Show cursor
+        tvCursor.style.display = 'block';
+        cursorX = window.innerWidth / 2;
+        cursorY = window.innerHeight / 2;
+        tvCursor.style.left = cursorX + 'px';
+        tvCursor.style.top = cursorY + 'px';
+        streamActive = true;
+
         remoteVideo.play().then(() => {
+          // Unmute after play starts (autoplay policy)
           remoteVideo.muted = false;
-        }).catch(err => console.error('Play error:', err));
+          setDebug('Streaming');
+          console.log('[Receiver] Video playing, audio unmuted');
+        }).catch(err => {
+          console.error('[Receiver] Play error:', err);
+          setDebug('Play error: ' + err.message);
+        });
       };
 
       pc.onicecandidate = (event) => {
@@ -402,52 +189,146 @@
         }
       };
 
-      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: offerSdp }));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
+      pc.oniceconnectionstatechange = () => {
+        console.log('[Receiver] ICE state:', pc.iceConnectionState);
+        setDebug('ICE: ' + pc.iceConnectionState);
 
-      context.sendCustomMessage(CUSTOM_NAMESPACE, senderId, {
-        type: 'answer',
-        sdp: answer.sdp
-      });
+        if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+          streamActive = false;
+          tvCursor.style.display = 'none';
+          // Show waiting screen again
+          waitingScreen.style.display = 'flex';
+          waitingScreen.style.opacity = '1';
+        }
+      };
+
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: offerSdp }));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        context.sendCustomMessage(CUSTOM_NAMESPACE, senderId, {
+          type: 'answer',
+          sdp: answer.sdp
+        });
+        console.log('[Receiver] Sent SDP answer back to phone');
+      } catch (err) {
+        console.error('[Receiver] WebRTC negotiation error:', err);
+        setDebug('Error: ' + err.message);
+      }
     }
 
-    // Cast Messaging Receiver
+    // ─── Input Forwarding ───────────────────────────────────────
+    // TV-side pointer/click events → normalized coordinates → phone
+    // The phone's AccessibilityService injects the tap on the real display
+
+    function sendTapToPhone(xPercent, yPercent, senderId) {
+      try {
+        context.sendCustomMessage(CUSTOM_NAMESPACE, senderId, {
+          type: 'remote_tap',
+          xPercent: xPercent,
+          yPercent: yPercent
+        });
+        console.log(`[Receiver] Sent tap: (${(xPercent*100).toFixed(1)}%, ${(yPercent*100).toFixed(1)}%)`);
+      } catch (e) {
+        console.error('[Receiver] Error sending tap:', e);
+      }
+    }
+
+    // Track last sender for input forwarding
+    let lastSenderId = null;
+
+    // Mouse click on video → normalize → send to phone
+    remoteVideo.addEventListener('click', (e) => {
+      if (!streamActive || !lastSenderId) return;
+      const rect = remoteVideo.getBoundingClientRect();
+      const xPercent = (e.clientX - rect.left) / rect.width;
+      const yPercent = (e.clientY - rect.top) / rect.height;
+      sendTapToPhone(xPercent, yPercent, lastSenderId);
+    });
+
+    // Mouse move on video → update local cursor position
+    remoteVideo.addEventListener('mousemove', (e) => {
+      if (!streamActive) return;
+      cursorX = e.clientX;
+      cursorY = e.clientY;
+      tvCursor.style.left = cursorX + 'px';
+      tvCursor.style.top = cursorY + 'px';
+    });
+
+    // Touch support for TV remotes that emit touch events
+    remoteVideo.addEventListener('touchstart', (e) => {
+      if (!streamActive || !lastSenderId) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = remoteVideo.getBoundingClientRect();
+      const xPercent = (touch.clientX - rect.left) / rect.width;
+      const yPercent = (touch.clientY - rect.top) / rect.height;
+      sendTapToPhone(xPercent, yPercent, lastSenderId);
+    }, { passive: false });
+
+    // ─── Cast Channel Message Listener ──────────────────────────
     context.addCustomMessageListener(CUSTOM_NAMESPACE, async (event) => {
       try {
+        lastSenderId = event.senderId;
         const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
 
-        if (payload.type === 'offer') {
-          handleOffer(payload.sdp, event.senderId);
-        }
-        else if (payload.type === 'ice_candidate' && pc) {
-          await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-        }
-        else if (payload.type === 'stop' && pc) {
-          pc.close();
-          pc = null;
-          remoteVideo.style.display = 'none';
-        }
-        else if (payload.type === 'set_installed_apps') {
-          renderInstalledApps(payload.apps);
-        }
-        else if (payload.type === 'cursor_move') {
-          cursorX = Math.max(0, Math.min(window.innerWidth, cursorX + payload.dx * 1.8));
-          cursorY = Math.max(0, Math.min(window.innerHeight, cursorY + payload.dy * 1.8));
-          virtualCursor.style.left = `${cursorX}px`;
-          virtualCursor.style.top = `${cursorY}px`;
-        }
-        else if (payload.type === 'search_query') {
-          startMenuDrawer.style.display = 'flex';
-          startSearchInput.value = payload.query;
-          filterApps();
+        switch (payload.type) {
+          case 'offer':
+            await handleOffer(payload.sdp, event.senderId);
+            break;
+
+          case 'ice_candidate':
+            if (pc && payload.candidate) {
+              await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+            }
+            break;
+
+          case 'stop':
+            if (pc) {
+              pc.close();
+              pc = null;
+            }
+            streamActive = false;
+            remoteVideo.srcObject = null;
+            tvCursor.style.display = 'none';
+            waitingScreen.style.display = 'flex';
+            waitingScreen.style.opacity = '1';
+            setDebug('Stopped');
+            break;
+
+          case 'cursor_move':
+            // Phone trackpad sends relative cursor deltas
+            if (streamActive) {
+              cursorX = Math.max(0, Math.min(window.innerWidth, cursorX + (payload.dx || 0) * 1.8));
+              cursorY = Math.max(0, Math.min(window.innerHeight, cursorY + (payload.dy || 0) * 1.8));
+              tvCursor.style.left = cursorX + 'px';
+              tvCursor.style.top = cursorY + 'px';
+            }
+            break;
+
+          case 'click':
+            // Phone trackpad sends a click at current cursor position
+            if (streamActive && lastSenderId) {
+              const rect = remoteVideo.getBoundingClientRect();
+              const xPercent = (cursorX - rect.left) / rect.width;
+              const yPercent = (cursorY - rect.top) / rect.height;
+              sendTapToPhone(xPercent, yPercent, lastSenderId);
+            }
+            break;
+
+          default:
+            console.log('[Receiver] Unknown message type:', payload.type);
         }
       } catch (err) {
-        console.error('Error handling desktop message:', err);
+        console.error('[Receiver] Error handling message:', err);
       }
     });
 
+    // ─── Start Receiver ─────────────────────────────────────────
     context.start();
+    setDebug('Ready');
+    console.log('[Receiver] Pakkun dumb video sink receiver started');
   </script>
 </body>
 </html>
