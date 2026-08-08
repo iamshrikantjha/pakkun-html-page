@@ -256,7 +256,7 @@
       height: 100vh;
       object-fit: contain;
       background-color: #000;
-      z-index: 100;
+      z-index: 99990;
       display: none;
     }
   </style>
@@ -310,10 +310,10 @@
     </div>
   </div>
 
-  <!-- Virtual Mouse Cursor Pointer -->
+  <!-- Virtual Mouse Pointer Overlay -->
   <div id="virtualCursor" style="top: 50vh; left: 50vw;"></div>
 
-  <!-- Screen Stream Overlay -->
+  <!-- Real-Time Native Stream Overlay -->
   <video id="remoteVideo" autoplay playsinline></video>
 
   <script>
@@ -331,7 +331,7 @@
     let cursorX = window.innerWidth / 2;
     let cursorY = window.innerHeight / 2;
     let windowIdCounter = 0;
-    let installedPhoneApps = [];
+    let pc = null;
 
     // Live Clock
     setInterval(() => {
@@ -356,10 +356,8 @@
 
     function renderInstalledApps(apps) {
       if (!apps || !apps.length) return;
-      installedPhoneApps = apps;
       console.log('Rendering', apps.length, 'installed phone apps in desktop shell');
 
-      // Populate Start Menu App Grid
       startGrid.innerHTML = '';
       apps.forEach(app => {
         const appEl = document.createElement('div');
@@ -368,7 +366,6 @@
         appEl.setAttribute('data-app-pkg', app.packageName);
         appEl.setAttribute('data-app-icon', '📱');
 
-        // Color coding based on app name hash
         let hash = 0;
         for (let i = 0; i < app.name.length; i++) hash = app.name.charCodeAt(i) + ((hash << 5) - hash);
         const hue = Math.abs(hash) % 360;
@@ -381,172 +378,38 @@
       });
     }
 
-    function openApp(name, icon) {
-      startMenuDrawer.style.display = 'none';
-      windowIdCounter++;
-      const winId = `win_${windowIdCounter}`;
+    async function handleOffer(offerSdp, senderId) {
+      console.log('Received WebRTC offer from phone');
+      pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      });
 
-      const winEl = document.createElement('div');
-      winEl.className = 'window-frame active-win';
-      winEl.id = winId;
-      winEl.style.width = '680px';
-      winEl.style.height = '460px';
-      winEl.style.left = `${140 + ((windowIdCounter % 10) * 24)}px`;
-      winEl.style.top = `${80 + ((windowIdCounter % 10) * 24)}px`;
-      winEl.style.zIndex = 100 + windowIdCounter;
+      pc.ontrack = (event) => {
+        console.log('Received video/audio track on TV receiver');
+        remoteVideo.srcObject = event.streams[0];
+        remoteVideo.style.display = 'block';
+        remoteVideo.play().then(() => {
+          remoteVideo.muted = false;
+        }).catch(err => console.error('Play error:', err));
+      };
 
-      let bodyHtml = `
-        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;">
-          <div style="font-size:48px; margin-bottom:12px;">${icon}</div>
-          <div style="color:#F1F5F9; font-size:20px; font-weight:bold; margin-bottom:8px;">${name}</div>
-          <div style="color:#94A3B8; font-size:14px;">Mobile Desktop Window Instance</div>
-        </div>`;
-
-      if (name === 'Browser') {
-        bodyHtml = `
-          <div style="display:flex; flex-direction:column; height:100%;">
-            <input id="browserUrl" type="text" value="https://google.com" style="width:100%; padding:8px 12px; background:rgba(15,23,42,0.8); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#FFF; margin-bottom:10px;" />
-            <iframe src="https://wikipedia.org" style="width:100%; flex:1; border:none; border-radius:8px; background:#FFF;"></iframe>
-          </div>`;
-      } else if (name === 'Calculator') {
-        bodyHtml = `
-          <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px;">
-            <input id="calcDisplay" style="grid-column: span 4; height:48px; font-size:24px; text-align:right; padding:10px; background:rgba(15,23,42,0.8); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#FFF;" readonly value="0" />
-            <button onclick="calc('7')" style="padding:16px; font-size:18px;">7</button><button onclick="calc('8')" style="padding:16px; font-size:18px;">8</button><button onclick="calc('9')" style="padding:16px; font-size:18px;">9</button><button onclick="calc('/')" style="padding:16px; font-size:18px;">/</button>
-            <button onclick="calc('4')" style="padding:16px; font-size:18px;">4</button><button onclick="calc('5')" style="padding:16px; font-size:18px;">5</button><button onclick="calc('6')" style="padding:16px; font-size:18px;">6</button><button onclick="calc('*')" style="padding:16px; font-size:18px;">*</button>
-            <button onclick="calc('1')" style="padding:16px; font-size:18px;">1</button><button onclick="calc('2')" style="padding:16px; font-size:18px;">2</button><button onclick="calc('3')" style="padding:16px; font-size:18px;">3</button><button onclick="calc('-')" style="padding:16px; font-size:18px;">-</button>
-            <button onclick="calc('0')" style="padding:16px; font-size:18px;">0</button><button onclick="calc('C')" style="padding:16px; font-size:18px;">C</button><button onclick="calc('=')" style="padding:16px; font-size:18px;">=</button><button onclick="calc('+')" style="padding:16px; font-size:18px;">+</button>
-          </div>`;
-      } else if (name === 'Notes') {
-        bodyHtml = `<textarea id="notesArea" style="width:100%; height:100%; background:transparent; color:#FFF; border:none; outline:none; font-size:16px; resize:none;" placeholder="Type notes using phone keyboard..."></textarea>`;
-      }
-
-      winEl.innerHTML = `
-        <div class="window-header">
-          <div class="window-title"><span>${icon}</span> <span>${name}</span></div>
-          <div class="window-actions">
-            <div class="win-action-btn btn-min" data-win-id="${winId}">-</div>
-            <div class="win-action-btn btn-max" data-win-id="${winId}">□</div>
-            <div class="win-action-btn btn-close" data-win-id="${winId}">✕</div>
-          </div>
-        </div>
-        <div class="window-content">${bodyHtml}</div>
-      `;
-
-      document.body.appendChild(winEl);
-      focusWindow(winId);
-
-      // Add to taskbar
-      const pill = document.createElement('div');
-      pill.className = 'task-item active';
-      pill.id = `pill_${winId}`;
-      pill.setAttribute('data-win-id', winId);
-      pill.innerHTML = `<span>${icon}</span> <span>${name}</span>`;
-      taskbarItems.appendChild(pill);
-    }
-
-    function focusWindow(winId) {
-      document.querySelectorAll('.window-frame').forEach(w => w.classList.remove('active-win'));
-      document.querySelectorAll('.task-item').forEach(p => p.classList.remove('active'));
-
-      const win = document.getElementById(winId);
-      if (win) {
-        win.style.display = 'flex';
-        win.classList.add('active-win');
-        win.style.zIndex = 200 + windowIdCounter++;
-      }
-      const pill = document.getElementById(`pill_${winId}`);
-      if (pill) pill.classList.add('active');
-    }
-
-    function closeWindow(winId) {
-      console.log('Closing window:', winId);
-      const win = document.getElementById(winId);
-      if (win) win.remove();
-      const pill = document.getElementById(`pill_${winId}`);
-      if (pill) pill.remove();
-    }
-
-    function minimizeWindow(winId) {
-      const win = document.getElementById(winId);
-      if (win) win.style.display = 'none';
-      const pill = document.getElementById(`pill_${winId}`);
-      if (pill) pill.classList.remove('active');
-    }
-
-    function maximizeWindow(winId) {
-      const win = document.getElementById(winId);
-      if (win) {
-        if (win.style.width === '100vw') {
-          win.style.width = '680px';
-          win.style.height = '460px';
-          win.style.left = '140px';
-          win.style.top = '80px';
-        } else {
-          win.style.width = '100vw';
-          win.style.height = 'calc(100vh - 52px)';
-          win.style.left = '0';
-          win.style.top = '0';
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          context.sendCustomMessage(CUSTOM_NAMESPACE, senderId, {
+            type: 'ice_candidate',
+            candidate: event.candidate
+          });
         }
-      }
-    }
+      };
 
-    function calc(val) {
-      const display = document.getElementById('calcDisplay');
-      if (!display) return;
-      if (val === 'C') display.value = '0';
-      else if (val === '=') {
-        try { display.value = eval(display.value); } catch(e) { display.value = 'Error'; }
-      } else {
-        if (display.value === '0') display.value = val;
-        else display.value += val;
-      }
-    }
+      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: offerSdp }));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
 
-    // Bulletproof Virtual Mouse Click Handler
-    function handleVirtualClick(x, y) {
-      let target = document.elementFromPoint(x, y);
-      console.log('Virtual click target:', target);
-
-      while (target && target !== document.body) {
-        // Start trigger
-        if (target.id === 'startTrigger' || target.classList.contains('start-trigger')) {
-          toggleStartMenu();
-          return;
-        }
-        // Window Control Buttons
-        if (target.classList && target.classList.contains('win-action-btn')) {
-          const winId = target.getAttribute('data-win-id');
-          if (target.classList.contains('btn-close')) closeWindow(winId);
-          else if (target.classList.contains('btn-min')) minimizeWindow(winId);
-          else if (target.classList.contains('btn-max')) maximizeWindow(winId);
-          return;
-        }
-        // Taskbar Items
-        if (target.classList && target.classList.contains('task-item')) {
-          const winId = target.getAttribute('data-win-id');
-          if (winId) focusWindow(winId);
-          return;
-        }
-        // Desktop App Shortcut Launcher
-        if (target.classList && target.classList.contains('desktop-app')) {
-          const name = target.getAttribute('data-app-name') || 'App';
-          const icon = target.getAttribute('data-app-icon') || '📱';
-          openApp(name, icon);
-          return;
-        }
-        // Window Focus
-        if (target.classList && target.classList.contains('window-frame')) {
-          focusWindow(target.id);
-          return;
-        }
-        // Standard native onclick
-        if (target.onclick) {
-          target.onclick();
-          return;
-        }
-        target = target.parentElement;
-      }
+      context.sendCustomMessage(CUSTOM_NAMESPACE, senderId, {
+        type: 'answer',
+        sdp: answer.sdp
+      });
     }
 
     // Cast Messaging Receiver
@@ -554,7 +417,18 @@
       try {
         const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
 
-        if (payload.type === 'set_installed_apps') {
+        if (payload.type === 'offer') {
+          handleOffer(payload.sdp, event.senderId);
+        }
+        else if (payload.type === 'ice_candidate' && pc) {
+          await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+        }
+        else if (payload.type === 'stop' && pc) {
+          pc.close();
+          pc = null;
+          remoteVideo.style.display = 'none';
+        }
+        else if (payload.type === 'set_installed_apps') {
           renderInstalledApps(payload.apps);
         }
         else if (payload.type === 'cursor_move') {
@@ -563,20 +437,10 @@
           virtualCursor.style.left = `${cursorX}px`;
           virtualCursor.style.top = `${cursorY}px`;
         }
-        else if (payload.type === 'click') {
-          handleVirtualClick(cursorX, cursorY);
-        }
         else if (payload.type === 'search_query') {
           startMenuDrawer.style.display = 'flex';
           startSearchInput.value = payload.query;
           filterApps();
-        }
-        else if (payload.type === 'launch_app') {
-          openApp(payload.name, payload.icon || '📱');
-        }
-        else if (payload.type === 'type_text') {
-          const activeInput = document.querySelector('.active-win textarea, .active-win input');
-          if (activeInput) activeInput.value = payload.text;
         }
       } catch (err) {
         console.error('Error handling desktop message:', err);
